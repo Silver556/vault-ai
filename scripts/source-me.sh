@@ -1,14 +1,17 @@
 #!/bin/bash
 # Useful variables. Source from the root of the project
 
-# Shockingly hard to get the sourced script's directory in a portable way
-if [[ "${0}" == "bash" || "${0}" == "sh" ]]; then
-    script_name="${BASH_SOURCE[0]}"
+# Get the sourced script's directory in a more portable way
+if [[ "${BASH_SOURCE[0]}" != /* ]]; then
+  script_name="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 else
-    script_name="${0}"
+  script_name="${BASH_SOURCE[0]}"
 fi
 dir_path="$( cd "$(dirname "$script_name")" >/dev/null 2>&1 ; pwd -P )"
+
+echo "DEBUG: dir_path = ${dir_path}"
 secrets_path="${dir_path}/../secret"
+echo "DEBUG: secrets_path = ${secrets_path}"
 test ! -d $secrets_path && echo "ERR: ../secret dir missing!" && return 1
 
 export GO111MODULE=on
