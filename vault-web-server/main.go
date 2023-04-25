@@ -3,18 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
-	"path"
 	"strconv"
-	"strings"
 	"time"
-
-	"compress/gzip"
-	"io"
 
 	"github.com/pashpashpash/vault/serverutil"
 
@@ -86,42 +80,25 @@ func main() {
 
 	// Start up web server
 	server.UseHandler(mx)
-
 	server.Run(":" + *port)
 }
 
-func ServeIndex(w http.ResponseWriter, r *http.Request, meta serverutil.SiteConfig) {
-	// ... (unchanged code) ...
-}
-
-type gzipResponseWriter struct {
-	io.Writer
-	http.ResponseWriter
-}
-
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
-
+// Forwards all traffic to React, except basic file serving
 func ReactFileServer(fs http.FileSystem) http.Handler {
-	// ... (unchanged code) ...
+	fsh := http.FileServer(fs)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := os.Stat(serverutil.WebAbs(r.URL.Path)); os.IsNotExist(err) {
+			// Do nothing, and let the request pass through
+		} else {
+			fsh.ServeHTTP(w, r)
+		}
+	})
 }
 
 func StaticRedirectHandler(to string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, to, http.StatusPermanentRedirect)
-	}
+		http.Redirect(w, r,
+to, http.StatusFound)
 }
-
-func httpRedirect() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		httpsURL := fmt.Sprintf("https://%s%s", r.Host, r.URL)
-		http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
-	})
-
-	log.Println("HTTP redirect server listening on :80")
-	err := http.ListenAndServe(":80", nil)
-	if err != nil {
-		log.Fatalf("Error starting HTTP redirect server: %v", err)
-	}
 }
